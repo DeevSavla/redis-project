@@ -1,0 +1,18 @@
+import type { Request,Response,NextFunction } from "express";
+import { initialiseRedisClient } from "../utils/client.js";
+import { restaurantKetById } from "../utils/keys.js";
+import { errorResponse } from "../utils/responses.js";
+
+export const checkRestaurantExists = async (req:Request,res:Response,next:NextFunction) => {
+    const { restaurantId } = req.params;
+    if(!restaurantId){
+        return errorResponse(res,400,"Restaurant ID not found")
+    }
+    const client = await initialiseRedisClient();
+    const restaurantKey = restaurantKetById(restaurantId)
+    const exists = await client.exists(restaurantKey)
+    if(!exists){
+        return errorResponse(res,404,"Restaurant not found")
+    }
+    next()
+}
