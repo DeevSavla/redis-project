@@ -3,7 +3,7 @@ import { validate } from "../middlewares/validate.js";
 import { restaurantSchema, type Restaurant } from "../schemas/restaurant.js";
 import { initialiseRedisClient } from "../utils/client.js";
 import { nanoid } from "nanoid";
-import { restaurantKetById } from "../utils/keys.js";
+import { restaurantKeyById } from "../utils/keys.js";
 import { successResponse } from "../utils/responses.js";
 import { checkRestaurantExists } from "../middlewares/checkRestaurantId.js";
 const router = express.Router();
@@ -13,7 +13,7 @@ router.post("/", validate(restaurantSchema), async (req, res, next) => {
   try {
     const client = await initialiseRedisClient();
     const id = nanoid();
-    const restaurantKey = restaurantKetById(id);
+    const restaurantKey = restaurantKeyById(id);
     const hashData = {
       id,
       name: data.name,
@@ -35,7 +35,7 @@ router.get(
     const { restaurantId } = req.params;
     try {
       const client = await initialiseRedisClient();
-      const restaurantKey = restaurantKetById(restaurantId);
+      const restaurantKey = restaurantKeyById(restaurantId);
       //increments the view count of a restaurant in Redis and retrieves all its details, then stores the results in viewCount and restaurant.
       //promise.all helps to run multiple things in parallel
       const [viewCount, restaurant] = await Promise.all([
