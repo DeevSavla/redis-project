@@ -7,6 +7,9 @@ import {
   restaurantKeyById,
   reviewKeyById,
   reviewDetailsKeyById,
+  cuisineKey,
+  cuisinesKey,
+  restaurantCuisinesKeyById,
 } from "../utils/keys.js";
 import { errorResponse, successResponse } from "../utils/responses.js";
 import { checkRestaurantExists } from "../middlewares/checkRestaurantId.js";
@@ -25,8 +28,19 @@ router.post("/", validate(restaurantSchema), async (req, res, next) => {
       location: data.location,
       //did not add cuisines as it array of strings that hashes cannot handle
     };
-    const addResult = await client.hSet(restaurantKey, hashData);
-    console.log(`Added ${addResult} fields`);
+    await Promise.all([
+      ...data.cuisines.map((cuisine) =>
+        Promise.all([
+          //this will add the cuisine to global set of all cuisines stores 
+          client.sAdd(cuisinesKey, cuisine),
+          //this will add the id of restaurant in the set which serves that cuisine
+          client.sAdd(cuisineKey(cuisine), id),
+          //this will add the cuisine in the set of restaurant of cuisines it serves
+          client.sAdd(restaurantCuisinesKeyById(id), cuisine),
+        ])
+      ),
+      client.hSet(restaurantKey, hashData),
+    ]);
     return successResponse(res, hashData, "Added new restaurant");
   } catch (error) {
     next(error);
@@ -129,12 +143,14 @@ router.get(
       const restaurantKey = restaurantKeyById(restaurantId);
       //increments the view count of a restaurant in Redis and retrieves all its details, then stores the results in viewCount and restaurant.
       //promise.all helps to run multiple things in parallel
-      const [viewCount, restaurant] = await Promise.all([
+      const [viewCount, restaurant, cuisines] = await Promise.all([
         //tells how many users has viewed or searched that restaurant.
         client.hIncrBy(restaurantKey, "viewCount", 1),
         client.hGetAll(restaurantKey),
+        //fetches all the cuisines served by that restaurant
+        client.sMembers(restaurantCuisinesKeyById(restaurantId))
       ]);
-      return successResponse(res, restaurant, "Fetched Restaurant");
+      return successResponse(res, {...restaurant,cuisines}, "Fetched Restaurant");
     } catch (error) {
       next(error);
     }

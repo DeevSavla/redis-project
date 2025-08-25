@@ -11,3 +11,8 @@ Lists
 
 Linked lists of string values 
 can add/remove at head/tail
+newest entry will be at the top
+
+Sets 
+
+unordered collection of unique strings 
